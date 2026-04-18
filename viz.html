@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Concept Map</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+
+<input id="q" value="spectral theorem">
+<button onclick="loadGraph()">Explore</button>
+
+<svg width="900" height="650"></svg>
+
+<script>
+async function loadGraph(){
+
+  const q = document.getElementById("q").value;
+
+  const res = await fetch(
+    "https://YOUR-8000.app.github.dev/concept?q=" + encodeURIComponent(q)
+  );
+
+  const data = await res.json();
+
+  const nodes = [
+    {id:data.concept, group:"concept"},
+    ...data.courses.map(c=>({id:c,group:"course"})),
+    ...data.related.map(r=>({id:r,group:"related"}))
+  ];
+
+  const links = [];
+
+  data.courses.forEach(c=>{
+    links.push({source:data.concept,target:c});
+  });
+
+  data.related.forEach(r=>{
+    links.push({source:data.concept,target:r});
+  });
+
+  const svg = d3.select("svg");
+  svg.selectAll("*").remove();
+
+  const sim = d3.forceSimulation(nodes)
+    .force("link",
+      d3.forceLink(links).id(d=>d.id).distance(120)
+    )
+    .force("charge",
+      d3.forceManyBody().strength(-300)
+    )
+    .force("center",
+      d3.forceCenter(450,325)
+    );
+
+  const link = svg.selectAll("line")
+    .data(links)
+    .enter()
+    .append("line");
+
+  const node = svg.selectAll("circle")
+    .data(nodes)
+    .enter()
+    .append("circle")
+    .attr("r",12)
+    .call(
+      d3.drag()
+      .on("drag",(event,d)=>{
+        d.fx=event.x;
+        d.fy=event.y;
+      })
+    );
+
+  const label = svg.selectAll("text")
+    .data(nodes)
+    .enter()
+    .append("text")
+    .text(d=>d.id);
+
+  sim.on("tick",()=>{
+    link
+      .attr("x1",d=>d.source.x)
+      .attr("y1",d=>d.source.y)
+      .attr("x2",d=>d.target.x)
+      .attr("y2",d=>d.target.y);
+
+    node
+      .attr("cx",d=>d.x)
+      .attr("cy",d=>d.y);
+
+    label
+      .attr("x",d=>d.x+15)
+      .attr("y",d=>d.y);
+  });
+
+}
+
+loadGraph();
+</script>
+
+</body>
+</html>
