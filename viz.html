@@ -13,30 +13,57 @@
 <svg width="900" height="650"></svg>
 
 <script>
+
 async function loadGraph(){
 
   const q = document.getElementById("q").value;
 
-  const res = await fetch(
-    "https://opulent-space-train-jjr5jvxp5j45fqrqr-8000.app.github.dev/concept?q=" + encodeURIComponent(q)
-  );
+  const url = "https://opulent-space-train-jjr5jvxp5j45fqrqr-8000.app.github.dev/concept?q="
+              + encodeURIComponent(q);
 
-  const data = await res.json();
+  console.log("fetch:", url);
+
+  let res;
+  try {
+    res = await fetch(url);
+  } catch (e) {
+    console.error("fetch failed:", e);
+    return;
+  }
+
+  if (!res.ok) {
+    console.error("HTTP error:", res.status);
+    return;
+  }
+
+  let data;
+  try {
+    data = await res.json();
+  } catch (e) {
+    console.error("bad json:", e);
+    return;
+  }
+
+  console.log("data:", data);
+
+  const concept = data.concept || q;
+  const courses = data.courses || [];
+  const related = data.related || [];
 
   const nodes = [
-    {id:data.concept, group:"concept"},
-    ...data.courses.map(c=>({id:c,group:"course"})),
-    ...data.related.map(r=>({id:r,group:"related"}))
+    {id: concept, group: "concept"},
+    ...courses.map(c => ({id: c, group: "course"})),
+    ...related.map(r => ({id: r, group: "related"}))
   ];
 
   const links = [];
 
-  data.courses.forEach(c=>{
-    links.push({source:data.concept,target:c});
+  courses.forEach(c => {
+    links.push({source: concept, target: c});
   });
 
-  data.related.forEach(r=>{
-    links.push({source:data.concept,target:r});
+  related.forEach(r => {
+    links.push({source: concept, target: r});
   });
 
   const svg = d3.select("svg");
@@ -44,30 +71,35 @@ async function loadGraph(){
 
   const sim = d3.forceSimulation(nodes)
     .force("link",
-      d3.forceLink(links).id(d=>d.id).distance(120)
+      d3.forceLink(links).id(d => d.id).distance(120)
     )
     .force("charge",
-      d3.forceManyBody().strength(-300)
+      d3.forceManyBody().strength(-250)
     )
     .force("center",
-      d3.forceCenter(450,325)
+      d3.forceCenter(450, 325)
     );
 
   const link = svg.selectAll("line")
     .data(links)
     .enter()
-    .append("line");
+    .append("line")
+    .attr("stroke", "#aaa");
 
   const node = svg.selectAll("circle")
     .data(nodes)
     .enter()
     .append("circle")
-    .attr("r",12)
+    .attr("r", 10)
+    .attr("fill", d =>
+      d.group === "concept" ? "red" :
+      d.group === "course" ? "blue" : "green"
+    )
     .call(
       d3.drag()
-      .on("drag",(event,d)=>{
-        d.fx=event.x;
-        d.fy=event.y;
+      .on("drag", (event, d) => {
+        d.fx = event.x;
+        d.fy = event.y;
       })
     );
 
@@ -75,27 +107,30 @@ async function loadGraph(){
     .data(nodes)
     .enter()
     .append("text")
-    .text(d=>d.id);
+    .text(d => d.id)
+    .attr("font-size", 12);
 
-  sim.on("tick",()=>{
+  sim.on("tick", () => {
+
     link
-      .attr("x1",d=>d.source.x)
-      .attr("y1",d=>d.source.y)
-      .attr("x2",d=>d.target.x)
-      .attr("y2",d=>d.target.y);
+      .attr("x1", d => d.source.x)
+      .attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x)
+      .attr("y2", d => d.target.y);
 
     node
-      .attr("cx",d=>d.x)
-      .attr("cy",d=>d.y);
+      .attr("cx", d => d.x)
+      .attr("cy", d => d.y);
 
     label
-      .attr("x",d=>d.x+15)
-      .attr("y",d=>d.y);
+      .attr("x", d => d.x + 12)
+      .attr("y", d => d.y + 4);
   });
 
 }
 
 loadGraph();
+
 </script>
 
 </body>

@@ -1,6 +1,5 @@
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
-
 from graph import get_concept, get_domain
 
 app = FastAPI()
